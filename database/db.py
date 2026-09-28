@@ -1,5 +1,6 @@
 import sqlite3
 
+
 DB_PATH = "database/znu_food.db"
 
 
@@ -9,7 +10,6 @@ def get_connection():
 
 def init_db():
     connection = get_connection()
-
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -17,7 +17,10 @@ def init_db():
             telegram_id INTEGER PRIMARY KEY,
             username TEXT NOT NULL,
             password TEXT NOT NULL,
-            auto_reservation INTEGER DEFAULT 1
+            auto_reservation INTEGER DEFAULT 1,
+            reservation_days TEXT DEFAULT 'شنبه,یکشنبه,دوشنبه,سه‌شنبه,چهارشنبه',
+            meal TEXT DEFAULT 'ناهار',
+            selection_mode TEXT DEFAULT 'اولین غذای موجود'
         )
     """)
 
@@ -27,7 +30,6 @@ def init_db():
 
 def save_user(telegram_id, username, password):
     connection = get_connection()
-
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -45,11 +47,17 @@ def save_user(telegram_id, username, password):
 
 def get_user(telegram_id):
     connection = get_connection()
-
     cursor = connection.cursor()
 
     cursor.execute("""
-        SELECT telegram_id, username, password, auto_reservation
+        SELECT
+            telegram_id,
+            username,
+            password,
+            auto_reservation,
+            reservation_days,
+            meal,
+            selection_mode
         FROM users
         WHERE telegram_id = ?
     """, (telegram_id,))
@@ -59,3 +67,30 @@ def get_user(telegram_id):
     connection.close()
 
     return user
+
+
+def update_user_setting(telegram_id, field, value):
+    allowed_fields = {
+        "auto_reservation",
+        "reservation_days",
+        "meal",
+        "selection_mode",
+    }
+
+    if field not in allowed_fields:
+        raise ValueError("Invalid setting field.")
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        f"""
+        UPDATE users
+        SET {field} = ?
+        WHERE telegram_id = ?
+        """,
+        (value, telegram_id)
+    )
+
+    connection.commit()
+    connection.close()

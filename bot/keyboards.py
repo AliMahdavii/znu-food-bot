@@ -17,3 +17,21 @@ def main_menu():
     )
 
     return keyboard
+
+
+def settings_menu():
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.row(
+        "📅 روزهای رزرو",
+        "🍽 وعده غذایی"
+    )
+
+    keyboard.row(
+        "🔎 نوع انتخاب غذا",
+        "🔙 بازگشت"
+    )
+
+    return keyboard
