@@ -19,17 +19,40 @@ def get_reservation_result(
     food: Optional[str],
     price: Optional[int],
 ) -> ReservationResult:
-    """Read the website response and build a reservation result."""
 
-    body_text = page.locator("body").inner_text()
+    toast = page.locator(
+        '.toast:has(.toast-title:text("نتیجه ارسال درخواست"))'
+    ).last
 
-    if "موجودی کافی نمی باشد" in body_text:
+    try:
+        toast.wait_for(
+            state="visible",
+            timeout=5000,
+        )
+    except Exception:
         return ReservationResult(
             day=day,
             food=food,
             price=price,
             success=False,
-            message="موجودی کافی نمی باشد",
+            message="Reservation result was not detected.",
+        )
+
+    message = toast.locator(
+        ".toast-message"
+    ).inner_text().strip()
+
+    message = message.lstrip(":").strip()
+
+    toast_class = toast.get_attribute("class") or ""
+
+    if "toast-warning" in toast_class or "toast-error" in toast_class:
+        return ReservationResult(
+            day=day,
+            food=food,
+            price=price,
+            success=False,
+            message=message,
         )
 
     return ReservationResult(
@@ -37,7 +60,7 @@ def get_reservation_result(
         food=food,
         price=price,
         success=True,
-        message="Reservation completed successfully.",
+        message=message or "Reservation completed successfully.",
     )
 
 
