@@ -13,12 +13,66 @@ class ReservationResult:
     message: str
 
 
+def activate_day_tab(page: Page, dayindex: int) -> None:
+    """Activate the tab for the selected day."""
+
+    if dayindex == 0:
+        return
+
+    tab = page.locator(
+        f'label[href="#tab_day{dayindex}"]'
+    )
+
+    if tab.count() == 0:
+        raise RuntimeError(
+            f"Day tab not found for dayindex={dayindex}"
+        )
+
+    tab.click()
+    page.wait_for_timeout(500)
+
+
+def parse_food_price(food_name: str) -> Optional[int]:
+    """Extract the price from a food option text."""
+
+    try:
+        price_text = food_name.split("[")[1].split("ریال")[0]
+        return int(price_text.replace("]", "").strip())
+    except (IndexError, ValueError):
+        return None
+
+
+def get_first_food(
+    food_select,
+) -> tuple[Optional[str], Optional[str], Optional[int]]:
+    """Return the first available food from the food selector."""
+
+    options = food_select.locator("option")
+
+    # Option 0 is the empty placeholder.
+    if options.count() < 2:
+        return None, None, None
+
+    food_option = options.nth(1)
+
+    food_name = food_option.inner_text().strip()
+    food_value = food_option.get_attribute("value")
+
+    if not food_value:
+        return food_name, None, None
+
+    price = parse_food_price(food_name)
+
+    return food_name, food_value, price
+
+
 def get_reservation_result(
     page: Page,
     day: str,
     food: Optional[str],
     price: Optional[int],
 ) -> ReservationResult:
+    """Read and convert the reservation result toast."""
 
     toast = page.locator(
         '.toast:has(.toast-title:text("نتیجه ارسال درخواست"))'
@@ -64,23 +118,6 @@ def get_reservation_result(
     )
 
 
-def activate_day_tab(page: Page, dayindex: int) -> None:
-    if dayindex == 0:
-        return
-
-    tab = page.locator(
-        f'label[href="#tab_day{dayindex}"]'
-    )
-
-    if tab.count() == 0:
-        raise RuntimeError(
-            f"Day tab not found for dayindex={dayindex}"
-        )
-
-    tab.click()
-    page.wait_for_timeout(500)
-
-
 def reserve_day(
     page: Page,
     dayindex: int,
@@ -111,10 +148,9 @@ def reserve_day(
         'select[ng-model="selectitem[dayindex].peek[mealindex].selectedFood"]'
     )
 
-    # First available food.
-    options = food_select.locator("option")
+    food_name, food_value, price = get_first_food(food_select)
 
-    if options.count() < 2:
+    if food_name is None:
         return ReservationResult(
             day=day_name,
             food=None,
@@ -123,47 +159,30 @@ def reserve_day(
             message="No available food found.",
         )
 
-    food_option = options.nth(1)
-
-    food_name = food_option.inner_text().strip()
-    food_value = food_option.get_attribute("value")
-
-    if not food_value:
+    if food_value is None:
         return ReservationResult(
             day=day_name,
             food=food_name,
-            price=None,
+            price=price,
             success=False,
             message="Food value was not found.",
         )
-
-    # Extract price from option text.
-    price = None
-
-    try:
-        price_text = food_name.split("[")[1].split("ریال")[0]
-        price = int(price_text.replace("]", "").strip())
-    except (IndexError, ValueError):
-        pass
 
     print(f"\n=== {day_name} ===")
     print(f"Food: {food_name}")
     print(f"Value: {food_value}")
 
-    # Select first food.
+    # Select the first available food.
     food_select.select_option(food_value)
 
     page.wait_for_timeout(1000)
 
-    # Website automatically selects the self.
+    # The website automatically selects the self.
     self_select = container.locator(
         'select[ng-model="selectitem[dayindex].peek[mealindex].selectedSelf"]'
     )
 
-    print(
-        "Self:",
-        self_select.input_value(),
-    )
+    print("Self:", self_select.input_value())
 
     # Add food to cart.
     if add_button.is_disabled():
