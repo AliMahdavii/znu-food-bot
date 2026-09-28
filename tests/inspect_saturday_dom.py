@@ -17,12 +17,14 @@ def main():
         page = browser.new_page()
 
         print("Opening ZNU...")
+
         page.goto(
             ZNU_URL,
             wait_until="domcontentloaded",
         )
 
         print("Logging in...")
+
         success = login(page)
 
         print("Login:", success)
@@ -40,60 +42,268 @@ def main():
 
         page.wait_for_timeout(3000)
 
+        # ---------------------------------------------------------
         # Go to next week
+        # ---------------------------------------------------------
+
+        print("Going to next week...")
+
         next_week = page.locator(
             'button[ng-click="browseWeek(startdate,7)"]'
+        )
+
+        print(
+            "Next week button count:",
+            next_week.count(),
         )
 
         next_week.click()
 
         page.wait_for_timeout(2000)
 
-        # Find Saturday
-        saturday = page.get_by_text(
-            "شنبه",
-            exact=False,
+        # ---------------------------------------------------------
+        # Inspect all tables
+        # ---------------------------------------------------------
+
+        print("\n=== TABLES ===")
+
+        tables = page.locator("table")
+
+        print(
+            "Table count:",
+            tables.count(),
+        )
+
+        for i in range(tables.count()):
+            table = tables.nth(i)
+
+            print(f"\n--- TABLE {i} ---")
+
+            print(
+                "CLASS:",
+                table.get_attribute("class"),
+            )
+
+            rows = table.locator("tr")
+
+            print(
+                "Rows:",
+                rows.count(),
+            )
+
+            for r in range(rows.count()):
+                row = rows.nth(r)
+
+                print(f"\n  ROW {r}")
+
+                cells = row.locator("th, td")
+
+                print(
+                    "  Cells:",
+                    cells.count(),
+                )
+
+                for c in range(cells.count()):
+                    cell = cells.nth(c)
+
+                    text = cell.inner_text().strip()
+
+                    print(
+                        f"    CELL {c}:",
+                        repr(text[:500]),
+                    )
+
+        # ---------------------------------------------------------
+        # Find food schedule table
+        # ---------------------------------------------------------
+
+        print("\n=== FOOD SCHEDULE TABLE ===")
+
+        food_table = page.locator(
+            "table.table-bordered.table-striped.table-hover"
         ).first
 
-        print("\n=== SATURDAY ===")
-        print("Text:", repr(saturday.inner_text()))
+        print(
+            "Food table count:",
+            page.locator(
+                "table.table-bordered.table-striped.table-hover"
+            ).count(),
+        )
 
-        # Get parents
-        current = saturday
+        print(
+            "Food table class:",
+            food_table.get_attribute("class"),
+        )
 
-        for level in range(1, 8):
+        # ---------------------------------------------------------
+        # Find lunch row
+        # ---------------------------------------------------------
 
-            current = current.locator("xpath=..")
+        print("\n=== LUNCH ROW ===")
 
-            print(f"\n=== PARENT LEVEL {level} ===")
+        lunch_row = food_table.locator("tr").filter(
+            has_text="ناهار"
+        )
 
-            try:
-                print("TAG:", current.evaluate("(el) => el.tagName"))
-                print("CLASS:", current.get_attribute("class"))
+        print(
+            "Lunch row count:",
+            lunch_row.count(),
+        )
+
+        if lunch_row.count() == 0:
+            print("❌ Lunch row not found")
+
+        else:
+            lunch = lunch_row.first
+
+            lunch_cells = lunch.locator("td")
+
+            print(
+                "Lunch cells:",
+                lunch_cells.count(),
+            )
+
+            # -----------------------------------------------------
+            # Inspect all lunch cells
+            # -----------------------------------------------------
+
+            for i in range(lunch_cells.count()):
+                cell = lunch_cells.nth(i)
+
                 print(
-                    "NG-REPEAT:",
-                    current.get_attribute("ng-repeat")
+                    f"\n--- LUNCH CELL {i} ---"
                 )
-                print(
-                    "NG-IF:",
-                    current.get_attribute("ng-if")
-                )
-                print(
-                    "NG-CLICK:",
-                    current.get_attribute("ng-click")
-                )
-
-                text = current.inner_text().strip()
 
                 print(
                     "TEXT:",
-                    repr(text[:500])
+                    repr(cell.inner_text()),
                 )
 
-            except Exception as e:
-                print("ERROR:", e)
+                print(
+                    "CLASS:",
+                    cell.get_attribute("class"),
+                )
 
-        print("\nBrowser will remain open.")
+                print(
+                    "HTML:",
+                    cell.inner_html(),
+                )
+
+            # -----------------------------------------------------
+            # Saturday lunch
+            # -----------------------------------------------------
+
+            if lunch_cells.count() > 1:
+
+                saturday_lunch = lunch_cells.nth(1)
+
+                print(
+                    "\n=== SATURDAY LUNCH ==="
+                )
+
+                print(
+                    "TEXT:",
+                    repr(
+                        saturday_lunch.inner_text()
+                    ),
+                )
+
+                print(
+                    "CLASS:",
+                    saturday_lunch.get_attribute(
+                        "class"
+                    ),
+                )
+
+                print(
+                    "HTML:",
+                    saturday_lunch.inner_html(),
+                )
+
+                # -------------------------------------------------
+                # Inspect buttons
+                # -------------------------------------------------
+
+                print(
+                    "\n=== SATURDAY LUNCH BUTTONS ==="
+                )
+
+                buttons = saturday_lunch.locator(
+                    "button"
+                )
+
+                print(
+                    "Button count:",
+                    buttons.count(),
+                )
+
+                for i in range(buttons.count()):
+
+                    button = buttons.nth(i)
+
+                    print(
+                        f"\n--- BUTTON {i} ---"
+                    )
+
+                    print(
+                        "TEXT:",
+                        repr(
+                            button.inner_text()
+                        ),
+                    )
+
+                    print(
+                        "CLASS:",
+                        button.get_attribute(
+                            "class"
+                        ),
+                    )
+
+                    print(
+                        "NG-CLICK:",
+                        button.get_attribute(
+                            "ng-click"
+                        ),
+                    )
+
+                    print(
+                        "NG-IF:",
+                        button.get_attribute(
+                            "ng-if"
+                        ),
+                    )
+
+                    print(
+                        "NG-REPEAT:",
+                        button.get_attribute(
+                            "ng-repeat"
+                        ),
+                    )
+
+                    print(
+                        "TITLE:",
+                        button.get_attribute(
+                            "title"
+                        ),
+                    )
+
+                    print(
+                        "TYPE:",
+                        button.get_attribute(
+                            "type"
+                        ),
+                    )
+
+                    print(
+                        "HTML:",
+                        button.evaluate(
+                            "(el) => el.outerHTML"
+                        ),
+                    )
+
+        print(
+            "\nBrowser will remain open."
+        )
 
         page.wait_for_timeout(15000)
 
