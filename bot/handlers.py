@@ -1,7 +1,11 @@
 from telebot import TeleBot
 from telebot.types import ReplyKeyboardMarkup
 
-from bot.keyboards import main_menu, settings_menu
+from bot.keyboards import (
+    main_menu,
+    settings_menu,
+    reservation_days_keyboard,
+)
 from database.db import (
     save_user,
     get_user,
@@ -11,6 +15,7 @@ from database.db import (
 
 user_states = {}
 user_data = {}
+selected_days = {}
 
 
 def register_handlers(bot: TeleBot):
@@ -296,5 +301,178 @@ def register_handlers(bot: TeleBot):
             "⚙️ <b>تنظیمات رزرو</b>\n\n"
             "تنظیمات موردنظر خودت رو انتخاب کن:",
             parse_mode="HTML",
+            reply_markup=settings_menu()
+        )
+
+    @bot.message_handler(
+        func=lambda message: message.text == "📅 روزهای رزرو"
+    )
+    def reservation_days(message):
+
+        telegram_id = message.from_user.id
+        user = get_user(telegram_id)
+
+        if not user:
+            bot.send_message(
+                message.chat.id,
+                "❌ ابتدا حساب کاربری خودت رو ثبت کن.",
+                reply_markup=main_menu()
+            )
+            return
+
+        saved_days = user[4]
+
+        if saved_days:
+            days = [
+                day.strip()
+                for day in saved_days.split(",")
+                if day.strip()
+            ]
+        else:
+            days = []
+
+        selected_days[telegram_id] = set(days)
+
+        bot.send_message(
+            message.chat.id,
+            "📅 <b>روزهای رزرو</b>\n\n"
+            "روزهایی که می‌خواهی ربات برایت غذا رزرو کند "
+            "را انتخاب کن:",
+            parse_mode="HTML",
+            reply_markup=reservation_days_keyboard(
+                selected_days[telegram_id]
+            )
+        )
+
+    @bot.callback_query_handler(
+        func=lambda call: call.data.startswith("day:")
+    )
+    def toggle_reservation_day(call):
+
+        telegram_id = call.from_user.id
+
+        if telegram_id not in selected_days:
+            selected_days[telegram_id] = set()
+
+        day_codes = {
+            "sat": "شنبه",
+            "sun": "یکشنبه",
+            "mon": "دوشنبه",
+            "tue": "سه‌شنبه",
+            "wed": "چهارشنبه",
+        }
+
+        day_code = call.data.split(":", 1)[1]
+        day_name = day_codes.get(day_code)
+
+        if not day_name:
+            return
+
+        if day_name in selected_days[telegram_id]:
+            selected_days[telegram_id].remove(day_name)
+        else:
+            selected_days[telegram_id].add(day_name)
+
+        bot.answer_callback_query(call.id)
+
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=reservation_days_keyboard(
+                selected_days[telegram_id]
+            )
+        )
+
+    @bot.callback_query_handler(
+        func=lambda call: call.data == "days:save"
+    )
+    def save_reservation_days(call):
+
+        telegram_id = call.from_user.id
+
+        days = selected_days.get(
+            telegram_id,
+            set()
+        )
+
+        ordered_days = [
+            "شنبه",
+            "یکشنبه",
+            "دوشنبه",
+            "سه‌شنبه",
+            "چهارشنبه",
+        ]
+
+        selected = [
+            day
+            for day in ordered_days
+            if day in days
+        ]
+
+        if not selected:
+
+            bot.answer_callback_query(
+                call.id,
+                "حداقل یک روز را انتخاب کن.",
+                show_alert=True
+            )
+
+            return
+
+        value = ",".join(selected)
+
+        update_user_setting(
+            telegram_id,
+            "reservation_days",
+            value
+        )
+
+        selected_days.pop(
+            telegram_id,
+            None
+        )
+
+        bot.answer_callback_query(
+            call.id,
+            "تنظیمات ذخیره شد ✅"
+        )
+
+        bot.edit_message_text(
+            "✅ <b>روزهای رزرو ذخیره شدند.</b>\n\n"
+            f"📅 {value}",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="HTML"
+        )
+
+        bot.send_message(
+            call.message.chat.id,
+            "⚙️ تنظیمات رزرو",
+            reply_markup=settings_menu()
+        )
+
+    @bot.callback_query_handler(
+        func=lambda call: call.data == "days:back"
+    )
+    def reservation_days_back(call):
+
+        selected_days.pop(
+            call.from_user.id,
+            None
+        )
+
+        bot.answer_callback_query(call.id)
+
+        bot.edit_message_text(
+            "⚙️ <b>تنظیمات رزرو</b>\n\n"
+            "تنظیمات موردنظر خودت رو انتخاب کن:",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="HTML"
+        )
+
+        bot.send_message(
+            call.message.chat.id,
+            "⚙️ تنظیمات رزرو",
             reply_markup=settings_menu()
         )
