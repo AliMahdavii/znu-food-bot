@@ -81,3 +81,31 @@ def reservation_days_keyboard(selected_days):
     )
 
     return keyboard
+
+
+def auto_reservation_keyboard(enabled):
+    keyboard = InlineKeyboardMarkup()
+
+    if enabled:
+        keyboard.add(
+            InlineKeyboardButton(
+                "❌ غیرفعال کردن",
+                callback_data="auto:disable"
+            )
+        )
+    else:
+        keyboard.add(
+            InlineKeyboardButton(
+                "✅ فعال کردن",
+                callback_data="auto:enable"
+            )
+        )
+
+    keyboard.add(
+        InlineKeyboardButton(
+            "🔙 بازگشت",
+            callback_data="auto:back"
+        )
+    )
+
+    return keyboard

@@ -5,6 +5,7 @@ from bot.keyboards import (
     main_menu,
     settings_menu,
     reservation_days_keyboard,
+    auto_reservation_keyboard,
 )
 from database.db import (
     save_user,
@@ -175,30 +176,105 @@ def register_handlers(bot: TeleBot):
         if not user:
             bot.send_message(
                 message.chat.id,
-                "❌ ابتدا حساب کاربری خودت رو ثبت کن."
+                "❌ ابتدا حساب کاربری خودت رو ثبت کن.",
+                reply_markup=main_menu()
             )
             return
 
-        auto_reservation_status = user[3]
+        enabled = bool(user[3])
 
-        if auto_reservation_status:
-            text = (
-                "🤖 <b>رزرو خودکار</b>\n\n"
-                "وضعیت فعلی:\n"
-                "✅ فعال"
-            )
-        else:
-            text = (
-                "🤖 <b>رزرو خودکار</b>\n\n"
-                "وضعیت فعلی:\n"
-                "❌ غیرفعال"
-            )
+        status = (
+            "✅ فعال"
+            if enabled
+            else "❌ غیرفعال"
+        )
 
         bot.send_message(
             message.chat.id,
-            text,
+            "🤖 <b>رزرو خودکار</b>\n\n"
+            f"وضعیت فعلی: {status}\n\n"
+            "در صورت فعال بودن، ربات طبق تنظیمات شما "
+            "فرآیند رزرو هفتگی را انجام می‌دهد.",
             parse_mode="HTML",
-            reply_markup=main_menu()
+            reply_markup=auto_reservation_keyboard(enabled)
+        )
+
+    @bot.callback_query_handler(
+        func=lambda call: call.data == "auto:enable"
+    )
+    def enable_auto_reservation(call):
+
+        telegram_id = call.from_user.id
+
+        update_user_setting(
+            telegram_id,
+            "auto_reservation",
+            1
+        )
+
+        bot.answer_callback_query(
+            call.id,
+            "رزرو خودکار فعال شد ✅"
+        )
+
+        bot.edit_message_text(
+            "🤖 <b>رزرو خودکار</b>\n\n"
+            "وضعیت فعلی: ✅ فعال\n\n"
+            "ربات طبق تنظیمات شما فرآیند رزرو هفتگی "
+            "را انجام خواهد داد.",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="HTML",
+            reply_markup=auto_reservation_keyboard(True)
+        )
+
+    @bot.callback_query_handler(
+        func=lambda call: call.data == "auto:disable"
+    )
+    def disable_auto_reservation(call):
+
+        telegram_id = call.from_user.id
+
+        update_user_setting(
+            telegram_id,
+            "auto_reservation",
+            0
+        )
+
+        bot.answer_callback_query(
+            call.id,
+            "رزرو خودکار غیرفعال شد ❌"
+        )
+
+        bot.edit_message_text(
+            "🤖 <b>رزرو خودکار</b>\n\n"
+            "وضعیت فعلی: ❌ غیرفعال\n\n"
+            "رزرو خودکار برای حساب شما متوقف شده است.",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="HTML",
+            reply_markup=auto_reservation_keyboard(False)
+        )
+
+    @bot.callback_query_handler(
+        func=lambda call: call.data == "auto:back"
+    )
+    def auto_reservation_back(call):
+
+        bot.answer_callback_query(call.id)
+
+        bot.edit_message_text(
+            "⚙️ <b>تنظیمات رزرو</b>\n\n"
+            "تنظیمات موردنظر خودت رو انتخاب کن:",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="HTML"
+        )
+
+        bot.send_message(
+            call.message.chat.id,
+            "⚙️ تنظیمات رزرو",
+            reply_markup=settings_menu()
         )
 
     # =========================
