@@ -1,36 +1,23 @@
-from playwright.sync_api import sync_playwright
+import telebot
 
-from bot.login import login
-from config.settings import EDGE_PATH, ZNU_URL
+from config.settings import TELEGRAM_BOT_TOKEN
+from database.db import init_db
+from bot.handlers import register_handlers
 
 
 def main():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False,
-            executable_path=EDGE_PATH,
-        )
 
-        page = browser.new_page()
+    init_db()
 
-        print("Opening ZNU...")
-        page.goto(
-            ZNU_URL,
-            wait_until="domcontentloaded",
-        )
+    bot = telebot.TeleBot(
+        TELEGRAM_BOT_TOKEN
+    )
 
-        print("Login page:", page.url)
+    register_handlers(bot)
 
-        success = login(page)
+    print("🤖 ZNU Food Bot is running...")
 
-        print("\n=== LOGIN RESULT ===")
-        print("Success:", success)
-        print("Current URL:", page.url)
-        print("Title:", page.title())
-
-        page.wait_for_timeout(5000)
-
-        browser.close()
+    bot.infinity_polling()
 
 
 if __name__ == "__main__":
