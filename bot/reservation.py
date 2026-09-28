@@ -112,9 +112,9 @@ def reserve_day(
     )
 
     # First available food.
-    food_option = food_select.locator("option").nth(1)
+    options = food_select.locator("option")
 
-    if food_option.count() == 0:
+    if options.count() < 2:
         return ReservationResult(
             day=day_name,
             food=None,
@@ -122,6 +122,8 @@ def reserve_day(
             success=False,
             message="No available food found.",
         )
+
+    food_option = options.nth(1)
 
     food_name = food_option.inner_text().strip()
     food_value = food_option.get_attribute("value")
