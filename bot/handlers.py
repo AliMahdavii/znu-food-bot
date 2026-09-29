@@ -1,6 +1,6 @@
 from telebot import TeleBot
 
-from bot.keyboards import main_menu
+from bot.keyboards import main_menu, settings_menu
 from bot.reservation import ReservationResult
 from bot.service import reserve_next_week
 
@@ -16,10 +16,7 @@ def format_reservation_result(
     ]
 
     for result in results:
-        if result.success:
-            status = "✅"
-        else:
-            status = "❌"
+        status = "✅" if result.success else "❌"
 
         lines.append(
             f"{status} <b>{result.day}</b>"
@@ -50,6 +47,44 @@ def format_reservation_result(
     return "\n".join(lines)
 
 
+def run_reservation(
+    bot: TeleBot,
+    chat_id: int,
+):
+    """Run the reservation service and send the result to Telegram."""
+
+    bot.send_message(
+        chat_id,
+        "⏳ در حال ورود به سامانه و رزرو غذا...\n"
+        "لطفاً صبر کن.",
+    )
+
+    try:
+        results = reserve_next_week(
+            headless=True,
+        )
+
+        print("RESERVATION SERVICE FINISHED")
+
+        result_text = format_reservation_result(
+            results
+        )
+
+        bot.send_message(
+            chat_id,
+            result_text,
+            parse_mode="HTML",
+        )
+
+    except Exception as exc:
+        print(f"Reservation error: {exc}")
+
+        bot.send_message(
+            chat_id,
+            f"❌ خطا در رزرو:\n{exc}",
+        )
+
+
 def register_handlers(bot: TeleBot):
 
     @bot.message_handler(commands=["start"])
@@ -71,31 +106,58 @@ def register_handlers(bot: TeleBot):
     def reserve(message):
         print("RESERVE COMMAND RECEIVED")
 
-        bot.send_message(
-            message.chat.id,
-            "⏳ در حال ورود به سامانه و رزرو غذا...\n"
-            "لطفاً صبر کن.",
+        run_reservation(
+            bot=bot,
+            chat_id=message.chat.id,
         )
 
-        try:
-            results = reserve_next_week(
-                headless=True,
-            )
+    @bot.message_handler(
+        func=lambda message: message.text == "🤖 رزرو خودکار"
+    )
+    def auto_reservation(message):
+        print("AUTO RESERVATION BUTTON PRESSED")
 
-            print("RESERVATION SERVICE FINISHED")
+        run_reservation(
+            bot=bot,
+            chat_id=message.chat.id,
+        )
 
-            result_text = format_reservation_result(results)
+    @bot.message_handler(
+        func=lambda message: message.text == "⚙️ تنظیمات"
+    )
+    def settings(message):
+        bot.send_message(
+            message.chat.id,
+            "⚙️ <b>تنظیمات</b>\n\n"
+            "یکی از گزینه‌های زیر را انتخاب کن:",
+            parse_mode="HTML",
+            reply_markup=settings_menu(),
+        )
 
-            bot.send_message(
-                message.chat.id,
-                result_text,
-                parse_mode="HTML",
-            )
+    @bot.message_handler(
+        func=lambda message: message.text == "🔙 بازگشت"
+    )
+    def back_to_main_menu(message):
+        bot.send_message(
+            message.chat.id,
+            "🏠 برگشتیم به منوی اصلی.",
+            reply_markup=main_menu(),
+        )
 
-        except Exception as exc:
-            print(f"Reservation error: {exc}")
+    @bot.message_handler(
+        func=lambda message: message.text == "🍽 رزروهای من"
+    )
+    def my_reservations(message):
+        bot.send_message(
+            message.chat.id,
+            "🍽 هنوز بخش نمایش رزروها پیاده‌سازی نشده."
+        )
 
-            bot.send_message(
-                message.chat.id,
-                f"❌ خطا در رزرو:\n{exc}",
-            )
+    @bot.message_handler(
+        func=lambda message: message.text == "👤 حساب کاربری"
+    )
+    def account(message):
+        bot.send_message(
+            message.chat.id,
+            "👤 بخش حساب کاربری به‌زودی تکمیل می‌شود."
+        )
