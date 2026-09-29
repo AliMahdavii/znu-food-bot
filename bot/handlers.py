@@ -1,8 +1,8 @@
 from telebot import TeleBot
 
-from bot.browser import ZNUBrowser
 from bot.keyboards import main_menu
-from bot.reservation import ReservationResult, reserve_week
+from bot.reservation import ReservationResult
+from bot.service import reserve_next_week
 
 
 def format_reservation_result(
@@ -16,10 +16,7 @@ def format_reservation_result(
     ]
 
     for result in results:
-        if result.success:
-            status = "✅"
-        else:
-            status = "❌"
+        status = "✅" if result.success else "❌"
 
         lines.append(
             f"{status} <b>{result.day}</b>"
@@ -75,31 +72,14 @@ def register_handlers(bot: TeleBot):
             "لطفاً صبر کن.",
         )
 
-        browser = ZNUBrowser(headless=True)
-
         try:
-            page = browser.start()
-
-            if not browser.login():
-                bot.send_message(
-                    message.chat.id,
-                    "❌ ورود به سامانه ناموفق بود.",
-                )
-                return
-
-            browser.open_reservation_page()
-
-            browser.go_to_next_week()
-
-            bot.send_message(
-                message.chat.id,
-                "🔄 هفته بعد انتخاب شد.\n"
-                "🍽 در حال بررسی و رزرو غذاها...",
+            results = reserve_next_week(
+                headless=True,
             )
 
-            results = reserve_week(page)
-
-            result_text = format_reservation_result(results)
+            result_text = format_reservation_result(
+                results
+            )
 
             bot.send_message(
                 message.chat.id,
@@ -114,6 +94,3 @@ def register_handlers(bot: TeleBot):
                 message.chat.id,
                 "❌ هنگام رزرو غذا یک خطای غیرمنتظره رخ داد.",
             )
-
-        finally:
-            browser.close()
