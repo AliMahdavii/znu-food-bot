@@ -18,9 +18,15 @@ class ZNUBrowser:
 
         self.playwright = sync_playwright().start()
 
+        launch_options = {
+            "headless": self.headless,
+        }
+
+        if EDGE_PATH:
+            launch_options["executable_path"] = EDGE_PATH
+
         self.browser = self.playwright.chromium.launch(
-            headless=self.headless,
-            executable_path=EDGE_PATH,
+            **launch_options
         )
 
         self.page = self.browser.new_page()
@@ -59,15 +65,6 @@ class ZNUBrowser:
 
         self.page.wait_for_timeout(2000)
 
-    def close(self) -> None:
-        """Close the browser and Playwright."""
-
-        if self.browser is not None:
-            self.browser.close()
-
-        if self.playwright is not None:
-            self.playwright.stop()
-
     def go_to_next_week(self) -> None:
         """Navigate to the next reservation week."""
 
@@ -87,3 +84,12 @@ class ZNUBrowser:
 
         next_week.click()
         self.page.wait_for_timeout(1500)
+
+    def close(self) -> None:
+        """Close the browser and Playwright."""
+
+        if self.browser is not None:
+            self.browser.close()
+
+        if self.playwright is not None:
+            self.playwright.stop()
