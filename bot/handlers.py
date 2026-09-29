@@ -16,7 +16,10 @@ def format_reservation_result(
     ]
 
     for result in results:
-        status = "✅" if result.success else "❌"
+        if result.success:
+            status = "✅"
+        else:
+            status = "❌"
 
         lines.append(
             f"{status} <b>{result.day}</b>"
@@ -66,6 +69,8 @@ def register_handlers(bot: TeleBot):
 
     @bot.message_handler(commands=["reserve"])
     def reserve(message):
+        print("RESERVE COMMAND RECEIVED")
+
         bot.send_message(
             message.chat.id,
             "⏳ در حال ورود به سامانه و رزرو غذا...\n"
@@ -77,9 +82,9 @@ def register_handlers(bot: TeleBot):
                 headless=True,
             )
 
-            result_text = format_reservation_result(
-                results
-            )
+            print("RESERVATION SERVICE FINISHED")
+
+            result_text = format_reservation_result(results)
 
             bot.send_message(
                 message.chat.id,
@@ -92,5 +97,5 @@ def register_handlers(bot: TeleBot):
 
             bot.send_message(
                 message.chat.id,
-                "❌ هنگام رزرو غذا یک خطای غیرمنتظره رخ داد.",
+                f"❌ خطا در رزرو:\n{exc}",
             )
