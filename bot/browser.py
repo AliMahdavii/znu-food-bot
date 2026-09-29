@@ -67,3 +67,24 @@ class ZNUBrowser:
 
         if self.playwright is not None:
             self.playwright.stop()
+
+
+def go_to_next_week(self) -> None:
+    """Navigate to the next reservation week."""
+
+    if self.page is None:
+        raise RuntimeError(
+            "Browser has not been started."
+        )
+
+    next_week = self.page.locator(
+        'button[ng-click="browseWeek(startdate,7)"]'
+    )
+
+    if next_week.count() == 0:
+        raise RuntimeError(
+            "Next week button was not found."
+        )
+
+    next_week.click()
+    self.page.wait_for_timeout(1500)
