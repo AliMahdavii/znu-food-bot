@@ -31,11 +31,21 @@ class ZNUBrowser:
 
         self.page = self.browser.new_page()
 
-        self.page.goto(
-            ZNU_URL,
-            wait_until="domcontentloaded",
-            timeout=60000,
-        )
+        try:
+            response = self.page.goto(
+                ZNU_URL,
+                wait_until="commit",
+                timeout=60000,
+            )
+
+            print("ZNU STATUS:", response.status if response else "NO RESPONSE")
+            print("ZNU URL:", self.page.url)
+
+        except Exception as exc:
+            print("ZNU OPEN ERROR:", exc)
+            print("CURRENT URL:", self.page.url)
+
+            raise
 
         return self.page
 
