@@ -1,9 +1,10 @@
+import socket
+
+import requests
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 
 from bot.login import login
 from config.settings import EDGE_PATH, ZNU_URL
-import socket
-import requests
 
 
 class ZNUBrowser:
@@ -17,6 +18,37 @@ class ZNUBrowser:
 
     def start(self) -> Page:
         """Start the browser and open the ZNU login page."""
+
+        print("=== ZNU CONNECTION TEST ===")
+
+        # Test DNS
+        print("Testing ZNU DNS...")
+
+        try:
+            ip = socket.gethostbyname("student.znu.ac.ir")
+            print("ZNU IP:", ip)
+
+        except Exception as exc:
+            print("DNS ERROR:", repr(exc))
+
+        # Test HTTP connection
+        print("Testing ZNU HTTP connection...")
+
+        try:
+            response = requests.get(
+                ZNU_URL,
+                timeout=30,
+                allow_redirects=True,
+            )
+
+            print("REQUEST STATUS:", response.status_code)
+            print("REQUEST URL:", response.url)
+            print("REQUEST LENGTH:", len(response.text))
+
+        except Exception as exc:
+            print("REQUEST ERROR:", repr(exc))
+
+        print("=== END CONNECTION TEST ===")
 
         self.playwright = sync_playwright().start()
 
@@ -34,6 +66,8 @@ class ZNUBrowser:
         self.page = self.browser.new_page()
 
         try:
+            print("Opening ZNU with Playwright...")
+
             response = self.page.goto(
                 ZNU_URL,
                 wait_until="commit",
@@ -41,16 +75,16 @@ class ZNUBrowser:
             )
 
             print(
-                "ZNU STATUS:",
-                response.status if response else "NO RESPONSE"
+                "PLAYWRIGHT STATUS:",
+                response.status if response else "NO RESPONSE",
             )
 
             print(
-                "ZNU RESPONSE URL:",
-                response.url if response else "NO RESPONSE"
+                "PLAYWRIGHT RESPONSE URL:",
+                response.url if response else "NO RESPONSE",
             )
 
-            print("ZNU PAGE URL:", self.page.url)
+            print("PLAYWRIGHT PAGE URL:", self.page.url)
 
             self.page.wait_for_selector(
                 "#username",
@@ -91,7 +125,7 @@ class ZNUBrowser:
             wait_until="commit",
             timeout=60000,
         )
-        
+
         self.page.wait_for_timeout(3000)
 
     def go_to_next_week(self) -> None:
