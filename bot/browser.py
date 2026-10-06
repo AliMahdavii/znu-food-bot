@@ -16,7 +16,7 @@ class ZNUBrowser:
         self.page: Page | None = None
 
     def start(self) -> Page:
-        """Start the browser and open the ZNU website."""
+        """Start the browser and open the ZNU login page."""
 
         self.playwright = sync_playwright().start()
 
@@ -35,7 +35,7 @@ class ZNUBrowser:
 
         try:
             response = self.page.goto(
-                "https://student.znu.ac.ir/",
+                ZNU_URL,
                 wait_until="commit",
                 timeout=60000,
             )
@@ -44,59 +44,27 @@ class ZNUBrowser:
                 "ZNU STATUS:",
                 response.status if response else "NO RESPONSE"
             )
-            print("ZNU URL:", self.page.url)
+
+            print(
+                "ZNU RESPONSE URL:",
+                response.url if response else "NO RESPONSE"
+            )
+
+            print("ZNU PAGE URL:", self.page.url)
+
+            self.page.wait_for_selector(
+                "#username",
+                state="visible",
+                timeout=30000,
+            )
+
+            print("ZNU LOGIN FORM: READY")
 
         except Exception as exc:
             print("ZNU OPEN ERROR:", exc)
             print("CURRENT URL:", self.page.url)
 
-        print("=== ZNU NETWORK DIAGNOSTIC ===")
-
-        for host in [
-            "student.znu.ac.ir",
-            "food.znu.ac.ir",
-        ]:
-            try:
-                addresses = socket.getaddrinfo(
-                    host,
-                    443,
-                    type=socket.SOCK_STREAM,
-                )
-
-                ips = sorted({
-                    address[4][0]
-                    for address in addresses
-                })
-
-                print(f"{host} DNS: {ips}")
-
-            except Exception as exc:
-                print(f"{host} DNS ERROR: {exc}")
-
-        for url in [
-            "https://student.znu.ac.ir/",
-            "https://food.znu.ac.ir/",
-        ]:
-            try:
-                response = requests.get(
-                    url,
-                    timeout=20,
-                    allow_redirects=True,
-                )
-
-                print(
-                    f"{url} -> "
-                    f"STATUS={response.status_code} "
-                    f"FINAL={response.url}"
-                )
-
-            except Exception as exc:
-                print(
-                    f"{url} -> REQUEST ERROR: "
-                    f"{type(exc).__name__}: {exc}"
-                )
-
-        print("=== END DIAGNOSTIC ===")
+            raise
 
         return self.page
 
@@ -120,11 +88,11 @@ class ZNUBrowser:
 
         self.page.goto(
             "https://student.znu.ac.ir/#!/Reservation",
-            wait_until="domcontentloaded",
+            wait_until="commit",
             timeout=60000,
         )
-
-        self.page.wait_for_timeout(2000)
+        
+        self.page.wait_for_timeout(3000)
 
     def go_to_next_week(self) -> None:
         """Navigate to the next reservation week."""

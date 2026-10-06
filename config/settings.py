@@ -12,4 +12,4 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 EDGE_PATH = os.getenv("EDGE_PATH")
 
-ZNU_URL = "https://food.znu.ac.ir/"
+ZNU_URL = "https://student.znu.ac.ir/identity/login"
