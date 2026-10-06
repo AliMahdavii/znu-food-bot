@@ -33,7 +33,7 @@ class ZNUBrowser:
 
         try:
             response = self.page.goto(
-                ZNU_URL,
+                "https://student.znu.ac.ir/",
                 wait_until="commit",
                 timeout=60000,
             )
