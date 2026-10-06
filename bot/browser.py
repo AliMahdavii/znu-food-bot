@@ -2,6 +2,8 @@ from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 
 from bot.login import login
 from config.settings import EDGE_PATH, ZNU_URL
+import socket
+import requests
 
 
 class ZNUBrowser:
@@ -38,14 +40,63 @@ class ZNUBrowser:
                 timeout=60000,
             )
 
-            print("ZNU STATUS:", response.status if response else "NO RESPONSE")
+            print(
+                "ZNU STATUS:",
+                response.status if response else "NO RESPONSE"
+            )
             print("ZNU URL:", self.page.url)
 
         except Exception as exc:
             print("ZNU OPEN ERROR:", exc)
             print("CURRENT URL:", self.page.url)
 
-            raise
+        print("=== ZNU NETWORK DIAGNOSTIC ===")
+
+        for host in [
+            "student.znu.ac.ir",
+            "food.znu.ac.ir",
+        ]:
+            try:
+                addresses = socket.getaddrinfo(
+                    host,
+                    443,
+                    type=socket.SOCK_STREAM,
+                )
+
+                ips = sorted({
+                    address[4][0]
+                    for address in addresses
+                })
+
+                print(f"{host} DNS: {ips}")
+
+            except Exception as exc:
+                print(f"{host} DNS ERROR: {exc}")
+
+        for url in [
+            "https://student.znu.ac.ir/",
+            "https://food.znu.ac.ir/",
+        ]:
+            try:
+                response = requests.get(
+                    url,
+                    timeout=20,
+                    allow_redirects=True,
+                )
+
+                print(
+                    f"{url} -> "
+                    f"STATUS={response.status_code} "
+                    f"FINAL={response.url}"
+                )
+
+            except Exception as exc:
+                print(
+                    f"{url} -> REQUEST ERROR: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+        print("=== END DIAGNOSTIC ===")
 
         return self.page
 
