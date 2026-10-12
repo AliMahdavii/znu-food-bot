@@ -11,6 +11,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && python -m playwright install chromium
 
-COPY . .
+    COPY . .
 
-CMD ["python", "main.py"]
+    CMD ["python", "main.py"]
