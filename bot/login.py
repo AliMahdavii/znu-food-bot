@@ -17,7 +17,11 @@ def login(page: Page) -> bool:
     page.locator("#username").fill(ZNU_USERNAME)
     page.locator("#password").fill(ZNU_PASSWORD)
 
-    page.get_by_role("button", name="ورود").click(
+    page.get_by_role(
+        "button",
+        name="ورود",
+        exact=True,
+    ).click(
         no_wait_after=True
     )
 

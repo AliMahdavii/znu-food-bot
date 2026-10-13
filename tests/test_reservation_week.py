@@ -26,9 +26,51 @@ with sync_playwright() as p:
         raise SystemExit(1)
 
     print("Opening reservation page...")
-    page.goto("https://student.znu.ac.ir/#!/Reservation")
 
-    page.wait_for_timeout(2000)
+    page.goto(
+        "https://student.znu.ac.ir/#!/Reservation",
+        wait_until="domcontentloaded",
+        timeout=60000,
+    )
+
+    page.wait_for_timeout(5000)
+
+    print("Current URL:", page.url)
+    print("Page title:", page.title())
+
+    print("\n--- Visible buttons ---")
+
+    buttons = page.get_by_role("button")
+    button_count = buttons.count()
+
+    for i in range(button_count):
+        button = buttons.nth(i)
+
+        try:
+            if button.is_visible():
+                print(
+                    f"Button {i}:",
+                    repr(button.inner_text()),
+                    "| ng-click:",
+                    button.get_attribute("ng-click"),
+                )
+        except Exception:
+            pass
+
+    print("\n--- Page messages ---")
+
+    print(
+        page.locator("body").inner_text()[:4000]
+    )
+
+    print("\n--- Reservation elements ---")
+
+    print(
+        "Next-week selector count:",
+        page.locator(
+            'button[ng-click="browseWeek(startdate,7)"]'
+        ).count(),
+    )
 
     print("Going to next week...")
 
