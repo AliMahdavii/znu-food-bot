@@ -3,6 +3,7 @@ from telebot import TeleBot
 from bot.keyboards import main_menu, settings_menu
 from bot.reservation import ReservationResult
 from bot.service import reserve_next_week
+from database.db import get_user
 
 
 def format_reservation_result(
@@ -50,8 +51,26 @@ def format_reservation_result(
 def run_reservation(
     bot: TeleBot,
     chat_id: int,
+    telegram_id: int,
 ):
-    """Run the reservation service and send the result to Telegram."""
+    """Run reservation using the requesting user's account."""
+
+    user = get_user(telegram_id)
+
+    if user is None:
+        bot.send_message(
+            chat_id,
+            "❌ هنوز حساب دانشگاهت ثبت نشده است.\n"
+            "ابتدا باید حساب کاربری‌ات را در ربات ثبت کنی.",
+        )
+        return
+
+    # Database fields:
+    # 0: telegram_id
+    # 1: username
+    # 2: password
+    username = user[1]
+    password = user[2]
 
     bot.send_message(
         chat_id,
@@ -61,14 +80,12 @@ def run_reservation(
 
     try:
         results = reserve_next_week(
+            username=username,
+            password=password,
             headless=True,
         )
 
-        print("RESERVATION SERVICE FINISHED")
-
-        result_text = format_reservation_result(
-            results
-        )
+        result_text = format_reservation_result(results)
 
         bot.send_message(
             chat_id,
@@ -76,12 +93,14 @@ def run_reservation(
             parse_mode="HTML",
         )
 
-    except Exception as exc:
-        print(f"Reservation error: {exc}")
+    except Exception:
+        # Avoid exposing credentials or internal error details.
+        print("Reservation failed.")
 
         bot.send_message(
             chat_id,
-            f"❌ خطا در رزرو:\n{exc}",
+            "❌ هنگام رزرو خطایی رخ داد. "
+            "لطفاً بعداً دوباره تلاش کن.",
         )
 
 
@@ -109,6 +128,7 @@ def register_handlers(bot: TeleBot):
         run_reservation(
             bot=bot,
             chat_id=message.chat.id,
+            telegram_id=message.from_user.id,
         )
 
     @bot.message_handler(
@@ -120,6 +140,7 @@ def register_handlers(bot: TeleBot):
         run_reservation(
             bot=bot,
             chat_id=message.chat.id,
+            telegram_id=message.from_user.id,
         )
 
     @bot.message_handler(

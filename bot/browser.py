@@ -1,6 +1,3 @@
-import socket
-
-import requests
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 
 from bot.login import login
@@ -10,8 +7,16 @@ from config.settings import EDGE_PATH, ZNU_URL
 class ZNUBrowser:
     """Manage the browser session for ZNU automation."""
 
-    def __init__(self, headless: bool = False):
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        headless: bool = False,
+    ):
+        self.username = username
+        self.password = password
         self.headless = headless
+
         self.playwright: Playwright | None = None
         self.browser: Browser | None = None
         self.page: Page | None = None
@@ -19,36 +24,7 @@ class ZNUBrowser:
     def start(self) -> Page:
         """Start the browser and open the ZNU login page."""
 
-        print("=== ZNU CONNECTION TEST ===")
-
-        # Test DNS
-        print("Testing ZNU DNS...")
-
-        try:
-            ip = socket.gethostbyname("student.znu.ac.ir")
-            print("ZNU IP:", ip)
-
-        except Exception as exc:
-            print("DNS ERROR:", repr(exc))
-
-        # Test HTTP connection
-        print("Testing ZNU HTTP connection...")
-
-        try:
-            response = requests.get(
-                ZNU_URL,
-                timeout=30,
-                allow_redirects=True,
-            )
-
-            print("REQUEST STATUS:", response.status_code)
-            print("REQUEST URL:", response.url)
-            print("REQUEST LENGTH:", len(response.text))
-
-        except Exception as exc:
-            print("REQUEST ERROR:", repr(exc))
-
-        print("=== END CONNECTION TEST ===")
+        print("REQUEST ERROR:", repr(exc))
 
         self.playwright = sync_playwright().start()
 
@@ -110,7 +86,11 @@ class ZNUBrowser:
                 "Browser has not been started."
             )
 
-        return login(self.page)
+        return login(
+            self.page,
+            self.username,
+            self.password,
+        )
 
     def open_reservation_page(self) -> None:
         """Open the food reservation page."""

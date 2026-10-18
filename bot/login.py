@@ -1,29 +1,23 @@
 from playwright.sync_api import Page
 
-from config.settings import ZNU_PASSWORD, ZNU_USERNAME
-
 
 LOGIN_URL = "https://student.znu.ac.ir/identity/login"
 
 
-def login(page: Page) -> bool:
-    """Log in to the ZNU food system."""
+def login(page: Page, username: str, password: str) -> bool:
+    """Log in to the ZNU student system."""
 
-    if not ZNU_USERNAME or not ZNU_PASSWORD:
-        raise ValueError(
-            "ZNU_USERNAME or ZNU_PASSWORD is not configured."
-        )
+    if not username or not password:
+        raise ValueError("Account credentials are missing.")
 
-    page.locator("#username").fill(ZNU_USERNAME)
-    page.locator("#password").fill(ZNU_PASSWORD)
+    page.locator("#username").fill(username)
+    page.locator("#password").fill(password)
 
     page.get_by_role(
         "button",
         name="ورود",
         exact=True,
-    ).click(
-        no_wait_after=True
-    )
+    ).click(no_wait_after=True)
 
     page.wait_for_timeout(3000)
 
