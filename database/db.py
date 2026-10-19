@@ -1,4 +1,5 @@
 import sqlite3
+from database.crypto import decrypt_password, encrypt_password
 
 
 DB_PATH = "database/znu_food.db"
@@ -29,44 +30,59 @@ def init_db():
 
 
 def save_user(telegram_id, username, password):
+    encrypted_password = encrypt_password(password)
+
     connection = get_connection()
-    cursor = connection.cursor()
 
-    cursor.execute("""
-        INSERT INTO users (telegram_id, username, password)
-        VALUES (?, ?, ?)
-        ON CONFLICT(telegram_id)
-        DO UPDATE SET
-            username = excluded.username,
-            password = excluded.password
-    """, (telegram_id, username, password))
+    try:
+        cursor = connection.cursor()
 
-    connection.commit()
-    connection.close()
+        cursor.execute("""
+            INSERT INTO users (telegram_id, username, password)
+            VALUES (?, ?, ?)
+            ON CONFLICT(telegram_id)
+            DO UPDATE SET
+                username = excluded.username,
+                password = excluded.password
+        """, (telegram_id, username, encrypted_password))
+
+        connection.commit()
+
+    finally:
+        connection.close()
 
 
 def get_user(telegram_id):
     connection = get_connection()
-    cursor = connection.cursor()
 
-    cursor.execute("""
-        SELECT
-            telegram_id,
-            username,
-            password,
-            auto_reservation,
-            reservation_days,
-            meal,
-            selection_mode
-        FROM users
-        WHERE telegram_id = ?
-    """, (telegram_id,))
+    try:
+        cursor = connection.cursor()
 
-    user = cursor.fetchone()
+        cursor.execute("""
+            SELECT
+                telegram_id,
+                username,
+                password,
+                auto_reservation,
+                reservation_days,
+                meal,
+                selection_mode
+            FROM users
+            WHERE telegram_id = ?
+        """, (telegram_id,))
 
-    connection.close()
+        user = cursor.fetchone()
 
-    return user
+        if user is None:
+            return None
+
+        user = list(user)
+        user[2] = decrypt_password(user[2])
+
+        return tuple(user)
+
+    finally:
+        connection.close()
 
 
 def update_user_setting(telegram_id, field, value):
