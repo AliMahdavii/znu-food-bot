@@ -24,7 +24,6 @@ class ZNUBrowser:
     def start(self) -> Page:
         """Start the browser and open the ZNU login page."""
 
-        print("REQUEST ERROR:", repr(exc))
 
         self.playwright = sync_playwright().start()
 
