@@ -285,12 +285,26 @@ def reserve_day(
     )
 
 
-def reserve_week(page: Page) -> list[ReservationResult]:
-    """Reserve lunch from Saturday through Wednesday."""
+def reserve_week(page: Page,
+                 selected_days: Optional[list[str]] = None
+                 ) -> list[ReservationResult]:
+    """Reserve food only on the selected weekdays."""
 
     results = []
 
+    # Normalize day names to handle Persian spacing differences.
+    def normalize(value): return value.replace(" ", "").replace("\u200c", "")
+
+    selected = (
+        {normalize(day) for day in selected_days}
+        if selected_days is not None
+        else {normalize(day_name) for day_name, _ in DAYS}
+    )
+
     for day_name, dayindex in DAYS:
+        if normalize(day_name) not in selected:
+            continue
+
         result = reserve_day(
             page=page,
             dayindex=dayindex,

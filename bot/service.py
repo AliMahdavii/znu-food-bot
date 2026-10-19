@@ -6,8 +6,9 @@ def reserve_next_week(
     username: str,
     password: str,
     headless: bool = True,
+    selected_days: list[str] | None = None,
 ) -> list[ReservationResult]:
-    """Log in to ZNU and reserve lunch for the next week."""
+    """Log in to ZNU and reserve food on selected days."""
 
     browser = ZNUBrowser(
         username=username,
@@ -24,7 +25,10 @@ def reserve_next_week(
         browser.open_reservation_page()
         browser.go_to_next_week()
 
-        return reserve_week(page)
+        return reserve_week(
+            page,
+            selected_days=selected_days,
+        )
 
     finally:
         browser.close()

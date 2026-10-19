@@ -80,6 +80,12 @@ def run_reservation(
     username = user[1]
     password = user[2]
 
+    selected_days = [
+        day.strip()
+        for day in (user[4] or "").split(",")
+        if day.strip()
+    ]
+
     bot.send_message(
         chat_id,
         "⏳ در حال ورود به سامانه و رزرو غذا...\n"
@@ -91,6 +97,7 @@ def run_reservation(
             username=username,
             password=password,
             headless=True,
+            selected_days=selected_days,
         )
 
         bot.send_message(
