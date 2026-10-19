@@ -4,6 +4,7 @@ from bot.keyboards import main_menu, settings_menu, account_menu
 from bot.reservation import ReservationResult
 from bot.service import reserve_next_week
 from database.db import get_user, save_user
+from html import escape
 
 
 def format_reservation_result(
@@ -55,7 +56,17 @@ def run_reservation(
 ):
     """Run reservation using the requesting user's account."""
 
-    user = get_user(telegram_id)
+    try:
+        user = get_user(telegram_id)
+    except Exception:
+        print("Failed to load university account for reservation.")
+
+        bot.send_message(
+            chat_id,
+            "❌ دریافت اطلاعات حساب ناموفق بود.\n"
+            "لطفاً تنظیمات حساب و رمزنگاری را بررسی کن.",
+        )
+        return
 
     if user is None:
         bot.send_message(
@@ -147,6 +158,14 @@ def save_university_credentials(message, bot, username):
     """Encrypt and save the user's university credentials."""
 
     password = message.text or ""
+
+    if password == "🔙 بازگشت":
+        bot.send_message(
+            message.chat.id,
+            "🏠 عملیات ثبت حساب لغو شد.",
+            reply_markup=main_menu(),
+        )
+        return
 
     # Try to remove the message containing the password.
     try:
@@ -272,7 +291,18 @@ def register_handlers(bot: TeleBot):
         func=lambda message: message.text == "👤 حساب کاربری"
     )
     def account(message):
-        user = get_user(message.from_user.id)
+        try:
+            user = get_user(message.from_user.id)
+        except Exception:
+            print("Failed to load university account.")
+
+            bot.send_message(
+                message.chat.id,
+                "❌ دریافت اطلاعات حساب ناموفق بود.\n"
+                "ممکن است تنظیمات رمزنگاری نیاز به بررسی داشته باشد.",
+                reply_markup=account_menu(),
+            )
+            return
 
         if user is None:
             text = (
@@ -280,9 +310,11 @@ def register_handlers(bot: TeleBot):
                 "هنوز حساب دانشگاهت را ثبت نکرده‌ای."
             )
         else:
+            username = escape(str(user[1]))
+
             text = (
                 "👤 <b>حساب کاربری</b>\n\n"
-                f"نام کاربری دانشگاه: <code>{user[1]}</code>\n"
+                f"نام کاربری دانشگاه: <code>{username}</code>\n"
                 "وضعیت: ✅ ثبت‌شده\n\n"
                 "برای تغییر اطلاعات، گزینه زیر را انتخاب کن."
             )
