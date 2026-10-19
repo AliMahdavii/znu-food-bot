@@ -110,10 +110,68 @@ def auto_reservation_keyboard(enabled):
 
     return keyboard
 
+
 def account_menu():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
     keyboard.row("🔐 ثبت یا تغییر حساب دانشگاه")
     keyboard.row("🔙 بازگشت")
+
+    return keyboard
+
+
+def meal_keyboard(selected_meal):
+    keyboard = InlineKeyboardMarkup()
+
+    meals = [
+        ("صبحانه", "صبحانه"),
+        ("ناهار", "ناهار"),
+        ("شام", "شام"),
+    ]
+
+    for name, value in meals:
+        prefix = "✅" if value == selected_meal else "🍽"
+
+        keyboard.add(
+            InlineKeyboardButton(
+                f"{prefix} {name}",
+                callback_data=f"meal:{value}",
+            )
+        )
+
+    keyboard.add(
+        InlineKeyboardButton(
+            "🔙 بازگشت",
+            callback_data="meal:back",
+        )
+    )
+
+    return keyboard
+
+
+def selection_mode_keyboard(selected_mode):
+    keyboard = InlineKeyboardMarkup()
+
+    modes = [
+        "اولین غذای موجود",
+        "ارزان‌ترین غذا",
+    ]
+
+    for mode in modes:
+        prefix = "✅" if mode == selected_mode else "🔎"
+
+        keyboard.add(
+            InlineKeyboardButton(
+                f"{prefix} {mode}",
+                callback_data=f"mode:{mode}",
+            )
+        )
+
+    keyboard.add(
+        InlineKeyboardButton(
+            "🔙 بازگشت",
+            callback_data="mode:back",
+        )
+    )
 
     return keyboard

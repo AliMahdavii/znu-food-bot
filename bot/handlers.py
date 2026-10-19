@@ -1,9 +1,20 @@
 from telebot import TeleBot
 
-from bot.keyboards import main_menu, settings_menu, account_menu
+from bot.keyboards import (
+    main_menu,
+    settings_menu,
+    account_menu,
+    reservation_days_keyboard,
+    meal_keyboard,
+    selection_mode_keyboard,
+)
 from bot.reservation import ReservationResult
 from bot.service import reserve_next_week
-from database.db import get_user, save_user
+from database.db import (
+    get_user,
+    save_user,
+    update_user_setting,
+)
 from html import escape
 
 
@@ -268,6 +279,105 @@ def register_handlers(bot: TeleBot):
             reply_markup=settings_menu(),
         )
 
+        @bot.message_handler(
+            func=lambda message: message.text == "📅 روزهای رزرو"
+        )
+        def reservation_days(message):
+            try:
+                user = get_user(message.from_user.id)
+
+                if user is None:
+                    bot.send_message(
+                        message.chat.id,
+                        "❌ ابتدا حساب دانشگاهت را ثبت کن.",
+                        reply_markup=main_menu(),
+                    )
+                    return
+
+                selected_days = [
+                    day.strip()
+                    for day in (user[4] or "").split(",")
+                    if day.strip()
+                ]
+
+                bot.send_message(
+                    message.chat.id,
+                    "📅 <b>روزهای رزرو</b>\n\n"
+                    "روزهای موردنظرت را انتخاب کن و سپس ذخیره را بزن.",
+                    parse_mode="HTML",
+                    reply_markup=reservation_days_keyboard(
+                        selected_days
+                    ),
+                )
+
+            except Exception:
+                print("Failed to load reservation days.")
+
+                bot.send_message(
+                    message.chat.id,
+                    "❌ دریافت تنظیمات ناموفق بود.",
+                )
+
+        @bot.message_handler(
+            func=lambda message: message.text == "🍽 وعده غذایی"
+        )
+        def meal_settings(message):
+            try:
+                user = get_user(message.from_user.id)
+
+                if user is None:
+                    bot.send_message(
+                        message.chat.id,
+                        "❌ ابتدا حساب دانشگاهت را ثبت کن.",
+                        reply_markup=main_menu(),
+                    )
+                    return
+
+                bot.send_message(
+                    message.chat.id,
+                    "🍽 وعده غذایی موردنظر را انتخاب کن:",
+                    reply_markup=meal_keyboard(user[5]),
+                )
+
+            except Exception:
+                print("Failed to load meal settings.")
+
+                bot.send_message(
+                    message.chat.id,
+                    "❌ دریافت تنظیمات ناموفق بود.",
+                )
+
+        @bot.message_handler(
+            func=lambda message: message.text == "🔎 نوع انتخاب غذا"
+        )
+        def selection_mode_settings(message):
+            try:
+                user = get_user(message.from_user.id)
+
+                if user is None:
+                    bot.send_message(
+                        message.chat.id,
+                        "❌ ابتدا حساب دانشگاهت را ثبت کن.",
+                        reply_markup=main_menu(),
+                    )
+                    return
+
+                bot.send_message(
+                    message.chat.id,
+                    "🔎 <b>نوع انتخاب غذا</b>\n\n"
+                    "روش انتخاب غذا را مشخص کن:",
+                    parse_mode="HTML",
+                    reply_markup=selection_mode_keyboard(user[6]),
+                )
+
+            except Exception:
+                print("Failed to load food selection settings.")
+
+                bot.send_message(
+                    message.chat.id,
+                    "❌ دریافت تنظیمات ناموفق بود.",
+                )
+
     @bot.message_handler(
         func=lambda message: message.text == "🔙 بازگشت"
     )
@@ -343,3 +453,205 @@ def register_handlers(bot: TeleBot):
             ask_university_username,
             bot,
         )
+
+        @bot.callback_query_handler(
+            func=lambda call: (
+                call.data.startswith("day:")
+                or call.data.startswith("days:")
+            )
+        )
+        def handle_reservation_days(call):
+            telegram_id = call.from_user.id
+
+            try:
+                user = get_user(telegram_id)
+
+                if user is None:
+                    bot.answer_callback_query(
+                        call.id,
+                        "ابتدا حساب دانشگاهت را ثبت کن.",
+                        show_alert=True,
+                    )
+                    return
+
+                selected_days = [
+                    day.strip()
+                    for day in (user[4] or "").split(",")
+                    if day.strip()
+                ]
+
+                day_names = {
+                    "sat": "شنبه",
+                    "sun": "یکشنبه",
+                    "mon": "دوشنبه",
+                    "tue": "سه‌شنبه",
+                    "wed": "چهارشنبه",
+                }
+
+                if call.data.startswith("day:"):
+                    day_code = call.data.split(":", 1)[1]
+                    day_name = day_names.get(day_code)
+
+                    if day_name is None:
+                        bot.answer_callback_query(
+                            call.id,
+                            "روز انتخاب‌شده معتبر نیست.",
+                            show_alert=True,
+                        )
+                        return
+
+                    if day_name in selected_days:
+                        selected_days.remove(day_name)
+                    else:
+                        selected_days.append(day_name)
+
+                    bot.edit_message_reply_markup(
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                        reply_markup=reservation_days_keyboard(
+                            selected_days
+                        ),
+                    )
+
+                    bot.answer_callback_query(call.id)
+                    return
+
+                action = call.data.split(":", 1)[1]
+
+                if action == "save":
+                    if not selected_days:
+                        bot.answer_callback_query(
+                            call.id,
+                            "حداقل یک روز را انتخاب کن.",
+                            show_alert=True,
+                        )
+                        return
+
+                    ordered_days = [
+                        day for day in day_names.values()
+                        if day in selected_days
+                    ]
+
+                    update_user_setting(
+                        telegram_id,
+                        "reservation_days",
+                        ",".join(ordered_days),
+                    )
+
+                    bot.answer_callback_query(
+                        call.id,
+                        "تنظیمات ذخیره شد.",
+                    )
+
+                    bot.edit_message_text(
+                        "✅ روزهای رزرو ذخیره شدند.\n\n"
+                        + "، ".join(ordered_days),
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                    )
+
+                elif action == "back":
+                    bot.answer_callback_query(call.id)
+
+                    bot.send_message(
+                        call.message.chat.id,
+                        "⚙️ برگشت به تنظیمات.",
+                        reply_markup=settings_menu(),
+                    )
+
+            except Exception:
+                print("Failed to update reservation days.")
+
+                bot.answer_callback_query(
+                    call.id,
+                    "ذخیره تنظیمات ناموفق بود.",
+                    show_alert=True,
+                )
+
+        @bot.callback_query_handler(
+            func=lambda call: (
+                call.data.startswith("meal:")
+                or call.data.startswith("mode:")
+            )
+        )
+        def handle_other_settings(call):
+            telegram_id = call.from_user.id
+            action, _, value = call.data.partition(":")
+
+            if value == "back":
+                bot.answer_callback_query(call.id)
+
+                bot.send_message(
+                    call.message.chat.id,
+                    "⚙️ برگشت به تنظیمات.",
+                    reply_markup=settings_menu(),
+                )
+                return
+
+            if action == "meal":
+                if value not in {"صبحانه", "ناهار", "شام"}:
+                    bot.answer_callback_query(
+                        call.id,
+                        "وعده غذایی معتبر نیست.",
+                        show_alert=True,
+                    )
+                    return
+
+                field = "meal"
+                keyboard_factory = meal_keyboard
+
+            elif action == "mode":
+                if value not in {
+                    "اولین غذای موجود",
+                    "ارزان‌ترین غذا",
+                }:
+                    bot.answer_callback_query(
+                        call.id,
+                        "روش انتخاب غذا معتبر نیست.",
+                        show_alert=True,
+                    )
+                    return
+
+                field = "selection_mode"
+                keyboard_factory = selection_mode_keyboard
+
+            else:
+                bot.answer_callback_query(call.id)
+                return
+
+            try:
+                user = get_user(telegram_id)
+
+                if user is None:
+                    bot.answer_callback_query(
+                        call.id,
+                        "ابتدا حساب دانشگاهت را ثبت کن.",
+                        show_alert=True,
+                    )
+                    return
+
+                update_user_setting(
+                    telegram_id,
+                    field,
+                    value,
+                )
+
+                bot.edit_message_reply_markup(
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                    reply_markup=keyboard_factory(value),
+                )
+
+                bot.answer_callback_query(
+                    call.id,
+                    "تنظیمات ذخیره شد.",
+                )
+
+            except Exception:
+                print("Failed to update user settings.")
+
+                bot.answer_callback_query(
+                    call.id,
+                    "ذخیره تنظیمات ناموفق بود.",
+                    show_alert=True,
+                )
