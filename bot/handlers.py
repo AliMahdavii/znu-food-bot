@@ -1,9 +1,9 @@
 from telebot import TeleBot
 
-from bot.keyboards import main_menu, settings_menu
+from bot.keyboards import main_menu, settings_menu, account_menu
 from bot.reservation import ReservationResult
 from bot.service import reserve_next_week
-from database.db import get_user
+from database.db import get_user, save_user
 
 
 def format_reservation_result(
@@ -104,6 +104,100 @@ def run_reservation(
         )
 
 
+def ask_university_username(bot, message):
+    """Ask the user for their university username."""
+
+    if message.text == "🔙 بازگشت":
+        bot.send_message(
+            message.chat.id,
+            "🏠 برگشتیم به منوی اصلی.",
+            reply_markup=main_menu(),
+        )
+        return
+
+    username = (message.text or "").strip()
+
+    if not username:
+        msg = bot.send_message(
+            message.chat.id,
+            "❌ نام کاربری معتبر نیست. دوباره وارد کن:",
+        )
+        bot.register_next_step_handler(
+            msg,
+            ask_university_username,
+            bot,
+        )
+        return
+
+    msg = bot.send_message(
+        message.chat.id,
+        "🔑 حالا رمز عبور سامانه دانشگاه را ارسال کن.\n\n"
+        "پس از دریافت رمز، ربات تلاش می‌کند پیام حاوی آن را حذف کند.",
+    )
+
+    bot.register_next_step_handler(
+        msg,
+        save_university_credentials,
+        bot,
+        username,
+    )
+
+
+def save_university_credentials(message, bot, username):
+    """Encrypt and save the user's university credentials."""
+
+    password = message.text or ""
+
+    # Try to remove the message containing the password.
+    try:
+        bot.delete_message(
+            message.chat.id,
+            message.message_id,
+        )
+    except Exception:
+        # Message deletion may fail due to Telegram permissions or limits.
+        pass
+
+    if not password.strip():
+        msg = bot.send_message(
+            message.chat.id,
+            "❌ رمز عبور خالی است. لطفاً رمز را دوباره ارسال کن:",
+        )
+        bot.register_next_step_handler(
+            msg,
+            save_university_credentials,
+            bot,
+            username,
+        )
+        return
+
+    try:
+        save_user(
+            telegram_id=message.from_user.id,
+            username=username,
+            password=password,
+        )
+
+    except Exception:
+        # Never log the username, password, or exception details.
+        print("Failed to save university credentials.")
+
+        bot.send_message(
+            message.chat.id,
+            "❌ ذخیره اطلاعات ناموفق بود.\n"
+            "تنظیمات رمزنگاری را بررسی کن و دوباره تلاش کن.",
+            reply_markup=account_menu(),
+        )
+        return
+
+    bot.send_message(
+        message.chat.id,
+        "✅ حساب دانشگاه با موفقیت ذخیره شد.\n\n"
+        "🔐 رمز عبور به‌صورت رمزنگاری‌شده در دیتابیس نگهداری می‌شود.",
+        reply_markup=main_menu(),
+    )
+
+
 def register_handlers(bot: TeleBot):
 
     @bot.message_handler(commands=["start"])
@@ -178,7 +272,42 @@ def register_handlers(bot: TeleBot):
         func=lambda message: message.text == "👤 حساب کاربری"
     )
     def account(message):
+        user = get_user(message.from_user.id)
+
+        if user is None:
+            text = (
+                "👤 <b>حساب کاربری</b>\n\n"
+                "هنوز حساب دانشگاهت را ثبت نکرده‌ای."
+            )
+        else:
+            text = (
+                "👤 <b>حساب کاربری</b>\n\n"
+                f"نام کاربری دانشگاه: <code>{user[1]}</code>\n"
+                "وضعیت: ✅ ثبت‌شده\n\n"
+                "برای تغییر اطلاعات، گزینه زیر را انتخاب کن."
+            )
+
         bot.send_message(
             message.chat.id,
-            "👤 بخش حساب کاربری به‌زودی تکمیل می‌شود."
+            text,
+            parse_mode="HTML",
+            reply_markup=account_menu(),
+        )
+
+    @bot.message_handler(
+        func=lambda message: (
+            message.text == "🔐 ثبت یا تغییر حساب دانشگاه"
+        )
+    )
+    def register_account(message):
+        msg = bot.send_message(
+            message.chat.id,
+            "🎓 نام کاربری سامانه دانشگاه را ارسال کن.\n\n"
+            "برای لغو، گزینه «🔙 بازگشت» را بفرست.",
+        )
+
+        bot.register_next_step_handler(
+            msg,
+            ask_university_username,
+            bot,
         )

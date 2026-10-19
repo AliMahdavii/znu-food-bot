@@ -109,3 +109,11 @@ def auto_reservation_keyboard(enabled):
     )
 
     return keyboard
+
+def account_menu():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.row("🔐 ثبت یا تغییر حساب دانشگاه")
+    keyboard.row("🔙 بازگشت")
+
+    return keyboard
