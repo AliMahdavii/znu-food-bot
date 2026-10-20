@@ -80,6 +80,8 @@ def run_reservation(
     username = user[1]
     password = user[2]
 
+    selection_mode = user[6] or "اولین غذای موجود"
+
     selected_days = [
         day.strip()
         for day in (user[4] or "").split(",")
@@ -98,6 +100,7 @@ def run_reservation(
             password=password,
             headless=True,
             selected_days=selected_days,
+            selection_mode=selection_mode,
         )
 
         bot.send_message(

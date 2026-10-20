@@ -91,30 +91,49 @@ def parse_food_price(food_name: str) -> Optional[int]:
         return None
 
 
-def get_first_food(
+def get_food(
     food_select: Locator,
+    selection_mode: str = "اولین غذای موجود",
 ) -> tuple[Optional[str], Optional[str], Optional[int]]:
-    """Return the first available food from the food selector."""
+    """Select a food according to the configured selection mode."""
 
     options = food_select.locator("option")
+    available_foods = []
 
-    # The first option is the empty placeholder.
-    if options.count() < 2:
+    for index in range(options.count()):
+        option = options.nth(index)
+        value = option.get_attribute("value")
+        name = option.inner_text().strip()
+
+        # Ignore placeholders and unavailable options.
+        if not value:
+            continue
+
+        price = parse_food_price(name)
+        available_foods.append((name, value, price))
+
+    if not available_foods:
         return None, None, None
 
-    food_option = options.nth(1)
+    if selection_mode == "اولین غذای موجود":
+        return available_foods[0]
 
-    food_name = food_option.inner_text().strip()
-    food_value = food_option.get_attribute("value")
+    if selection_mode == "ارزان‌ترین غذا":
+        priced_foods = [
+            food for food in available_foods
+            if food[2] is not None
+        ]
 
-    if not food_value:
-        return food_name, None, parse_food_price(food_name)
+        if not priced_foods:
+            return (
+                None,
+                None,
+                None,
+            )
 
-    return (
-        food_name,
-        food_value,
-        parse_food_price(food_name),
-    )
+        return min(priced_foods, key=lambda food: food[2])
+
+    raise ValueError(f"Unsupported selection mode: {selection_mode}")
 
 
 def get_day_container(
@@ -186,6 +205,7 @@ def reserve_day(
     page: Page,
     dayindex: int,
     day_name: str,
+    selection_mode: str = "اولین غذای موجود",
 ) -> ReservationResult:
     """Reserve the first available lunch food for one day.
 
@@ -209,8 +229,9 @@ def reserve_day(
         FOOD_SELECT_SELECTOR
     )
 
-    food_name, food_value, price = get_first_food(
-        food_select
+    food_name, food_value, price = get_food(
+        food_select,
+        selection_mode=selection_mode,
     )
 
     if food_name is None:
@@ -285,9 +306,11 @@ def reserve_day(
     )
 
 
-def reserve_week(page: Page,
-                 selected_days: Optional[list[str]] = None
-                 ) -> list[ReservationResult]:
+def reserve_week(
+    page: Page,
+    selected_days: Optional[list[str]] = None,
+    selection_mode: str = "اولین غذای موجود",
+) -> list[ReservationResult]:
     """Reserve food only on the selected weekdays."""
 
     results = []
@@ -309,6 +332,7 @@ def reserve_week(page: Page,
             page=page,
             dayindex=dayindex,
             day_name=day_name,
+            selection_mode=selection_mode,
         )
 
         results.append(result)

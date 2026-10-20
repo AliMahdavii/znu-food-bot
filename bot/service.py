@@ -7,6 +7,7 @@ def reserve_next_week(
     password: str,
     headless: bool = True,
     selected_days: list[str] | None = None,
+    selection_mode: str = "اولین غذای موجود",
 ) -> list[ReservationResult]:
     """Log in to ZNU and reserve food on selected days."""
 
@@ -28,6 +29,7 @@ def reserve_next_week(
         return reserve_week(
             page,
             selected_days=selected_days,
+            selection_mode=selection_mode,
         )
 
     finally:
